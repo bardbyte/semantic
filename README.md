@@ -1,4 +1,4 @@
-# Lumi PoC: Executive Summary & Technical Report
+# Lumi Semantic Layer PoC: Executive Summary & Technical Report
 
 ## 1. Executive Summary
 We successfully built and stress-tested a **Semantic AI Architecture** to evaluate three methods for generating enterprise analytics: **Raw SQL**, **Malloy**, and **LookML**.
@@ -18,9 +18,9 @@ The Proof of Concept is built on a modular Python architecture designed to simul
 
 ```mermaid
 graph TD
-    User([User Request]) --> Orchestrator[DemoOrchestrator]
+    User([User Request]) --> Orchestrator[Vertex AI Agent]
     
-    subgraph "Generation Layer (demo_agent.py)"
+    subgraph "Generation Layer"
         Orchestrator -->|Mode 1| RawSQL[Raw SQL Generator]
         Orchestrator -->|Mode 2| Malloy[Malloy Compiler Sim]
         Orchestrator -->|Mode 3| LookML[LookML Runner Sim]
@@ -85,16 +85,16 @@ We designed 5 realistic scenarios to stress-test the system against different cl
 ## 4. Comparative Results
 
 ### Raw SQL
--   **Performance**: ⚡️ Fast generation and execution.
--   **Reliability**: 📉 Low. In the "Deep Join" scenario, it correctly joined tables but often guessed column names wrong (`customer_id` instead of `cust_id`), causing execution failures.
+-   **Performance**: Fast generation and execution.
+-   **Reliability**: Low. In the "Deep Join" scenario, it correctly joined tables but often guessed column names wrong (`customer_id` instead of `cust_id`), causing execution failures.
 -   **Verdict**: Good for "quick and dirty" answers, but unsafe for executive reporting.
 
 ### Malloy
--   **Performance**: 🐢 Slower (due to compilation step), but execution is optimized.
--   **Reliability**: 📈 High. It successfully handled the "Derived Dimension" and "Governed Metric" scenarios by reusing the defined logic.
+-   **Performance**: Slower (due to compilation step), but execution is optimized.
+-   **Reliability**: High. It successfully handled the "Derived Dimension" and "Governed Metric" scenarios by reusing the defined logic.
 -   **Verdict**: Excellent for defining and querying complex data models with code-like composability.
 
 ### LookML
--   **Performance**: 🐢 Slower (simulated API latency).
--   **Reliability**: 🛡️ Highest. In the "Deep Join" scenario, it leveraged pre-defined relationships to generate the most accurate SQL structure.
+-   **Performance**: Slower (simulated API latency).
+-   **Reliability**: Highest. In the "Deep Join" scenario, it leveraged pre-defined relationships to generate the most accurate SQL structure.
 -   **Verdict**: The Gold Standard for enterprise BI. It ensures that "Revenue" always means the same thing, no matter who asks.
