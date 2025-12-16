@@ -1,0 +1,91 @@
+// ==================================================================
+// LUMI SEMANTIC OS KERNEL (Final v1.0)
+// Context: Enterprise Finance & Marketing Data
+// ==================================================================
+
+// ------------------------------------------------------------------
+// 1. BASE SOURCES (The Ingredients)
+// ------------------------------------------------------------------
+
+source: branches is table('semantic-poc-2025.lumi_enterprise_raw.dim_branches') {
+  primary_key: branch_id
+}
+
+source: products is table('semantic-poc-2025.lumi_enterprise_raw.dim_products') {
+  primary_key: prod_code
+}
+
+source: merchants is table('semantic-poc-2025.lumi_enterprise_raw.dim_merchants') {
+  primary_key: merch_id
+}
+
+source: campaigns is table('semantic-poc-2025.lumi_enterprise_raw.dim_campaigns') {
+  primary_key: camp_id
+}
+
+source: customers is table('semantic-poc-2025.lumi_enterprise_raw.dim_customers') {
+  primary_key: cust_id
+  join_one: branches on branch_id = branches.branch_id
+
+  // *** THE FIX: VIRTUAL DIMENSION ***
+  // The DB has 'risk_score', but Business wants 'segment'. We define it here.
+  dimension: segment is pick 'High Value' when risk_score >= 700
+                        pick 'Standard' when risk_score >= 500
+                        else 'High Risk'
+}
+
+source: accounts is table('semantic-poc-2025.lumi_enterprise_raw.dim_accounts') {
+  primary_key: acct_id
+  join_one: customers on cust_id = customers.cust_id
+  join_one: products on prod_code = products.prod_code
+}
+
+source: disputes is table('semantic-poc-2025.lumi_enterprise_raw.fct_disputes') {
+  primary_key: dispute_id
+}
+
+source: responses is table('semantic-poc-2025.lumi_enterprise_raw.fct_responses') {
+  primary_key: resp_id
+  join_one: campaigns on camp_id = campaigns.camp_id
+}
+
+// ------------------------------------------------------------------
+// 2. THE CORE ANALYTICAL MODEL (Finance Universe)
+// ------------------------------------------------------------------
+
+source: transactions is table('semantic-poc-2025.lumi_enterprise_raw.fct_transactions') {
+  primary_key: txn_id
+  join_one: accounts on acct_id = accounts.acct_id
+  join_one: merchants on merch_id = merchants.merch_id
+  join_one: disputes on txn_id = disputes.txn_id
+
+  // LOGIC: Currency Normalization
+  dimension: standardized_amount is pick amount * 1.1 when currency = 'EUR' else amount
+  dimension: is_refund is amount < 0
+
+  // METRIC: Total Revenue (The "Golden" Metric)
+  measure: total_revenue is sum(standardized_amount) {
+    where: not is_refund and accounts.status = 'ACTIVE'
+  }
+
+  // METRIC: Active Customers
+  measure: active_customer_count is count(distinct accounts.cust_id) {
+    where: accounts.status = 'ACTIVE'
+  }
+}
+
+// ------------------------------------------------------------------
+// 3. THE MARKETING MODEL (Customer Universe - Fan-Out Safe)
+// ------------------------------------------------------------------
+
+source: customer360 is from(customers) {
+  // Bring in the related data
+  join_many: responses on cust_id = responses.cust_id
+  join_many: accounts on cust_id = accounts.cust_id
+  
+  // METRIC: Campaign Engagement
+  measure: total_campaign_responses is count(responses.resp_id)
+  
+  // METRIC: Products Owned
+  measure: total_products_owned is count(accounts.acct_id)
+}
